@@ -1,0 +1,11 @@
+*.a
+*.ali
+*.ads
+*.ci
+*.d
+*.db
+*.lexch
+auto.cgpr
+*.o
+*.xml
+*.TMP
