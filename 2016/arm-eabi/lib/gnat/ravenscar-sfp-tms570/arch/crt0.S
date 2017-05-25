@@ -27,7 +27,7 @@
  *                                                                          *
  ****************************************************************************/
 
-/* This file is specific to the Hercules ARM Cortex-R4F Microcontrollers,
+/* This file is specific to the Hercules ARM Cortex-R5F Microcontrollers,
    such as the TMS570. */
 
 /* This file contains the trap table and start up code for the multitasking
@@ -61,44 +61,36 @@ __gnat_dabt_trap:	/* 10 */
 	ldr	pc,[pc,#-0x1b0] /* IRQ, jump to IRQVECREG, 16#ffff_fe70# */
 	ldr	pc,[pc,#-0x1b0] /* FIQ, jump to FIQVECREG, 16#ffff_fe74# */
 
+@-------------------------------------------------------------------------------
         .text
 
-svcSp:
-        .word __svc_stack_end
-abortSp:
-        .word __abort_stack_end
-undefSp:
-        .word __undef_stack_end
-fiqSp:
-        .word __fiq_stack_end
-irqSp:
-        .word __irq_stack_end
-userSp:
-        .word __stack_end
-DEVID:  .word 0xfffffff0
-DEVID_REVA:
-        .word 0x802aad05
-FEDACCTRL1:
-        .word 0xfff87008
-FEDACCTRL1_INITVAL:
-        .word 0x000a060A
+svcSp:               .word __svc_stack_end
+abortSp:             .word __abort_stack_end
+undefSp:             .word __undef_stack_end
+fiqSp:               .word __fiq_stack_end
+irqSp:               .word __irq_stack_end
+userSp:              .word __stack_end
+
+FEDACCTRL1:          .word 0xfff87008
+FEDACCTRL1_INITVAL:  .word 0x000a060A
+
+@-------------------------------------------------------------------------------
+
+	.type start_probe,%function
 
 start_probe:
-        bl    _coreEnableVfp_
-        bl    _coreInitRegisters_
-
-        /* Implement work-around for CCM-R4 issue on silicon revision A */
-        ldr r0, DEVID
-        ldr r1, [r0]
-        ldr r0, DEVID_REVA
-        cmp r0, r1
-        bleq  _esmCcmErrorsClear_
+        /* According to the CCS startup sequence */
+        bl   _coreEnableVfp_
+        bl   _coreInitRegisters_
 
         /* Enable response to ECC errors indicated by CPU for accesses
            to flash */
         ldr r0, FEDACCTRL1
         ldr r1, FEDACCTRL1_INITVAL
         str r1, [r0]
+
+        /* Initialize System - Clock, Flash settings with Efuse self check */
+        bl  _ada_system_init
 
         /* Enable CPU Event Export. This allows the CPU to signal any
            single-bit or double-bit errors detected by its ECC logic for
@@ -135,7 +127,7 @@ start_probe:
 	.size start_probe, . - start_probe
 
         /* Fall through in order to halt if main would return ... */
-
+@-------------------------------------------------------------------------------
 	.global	__exit
 __exit:
         bkpt 0
@@ -143,6 +135,7 @@ __exit:
 
 	.size __exit, . - __exit
 
+@-------------------------------------------------------------------------------
 _coreEnableVfp_:
         mrc   p15,     #0x00,      r0,       c1, c0, #0x02
         orr   r0,      r0,         #0xF00000
@@ -151,6 +144,7 @@ _coreEnableVfp_:
         fmxr  fpexc,   r0
         bx    lr
 
+@-------------------------------------------------------------------------------
 _coreInitRegisters_:
         /* Start initializing CPU registers, including backed registers for
            all modes. This is necessary on Cortex R4F to avoid miscompares
@@ -231,46 +225,10 @@ _coreInitRegisters_:
 0:      bl    1f
 1:      bl    2f
 2:      bl    3f
-3:      bx    r0
+3:      nop
+        mov   lr, r0
+        bx    lr
         .size _coreInitRegisters_, . - _coreInitRegisters_
 
-_esmCcmErrorsClear_:
-        ldr   r0, ESMSR1_REG     // load the ESMSR1 status register address
-        ldr   r2, ESMSR1_ERR_CLR
-        str       r2, [r0]       // clear the ESMSR1 register
+@-------------------------------------------------------------------------------
 
-        ldr   r0, ESMSR2_REG     // load the ESMSR2 status register address
-        ldr   r2, ESMSR2_ERR_CLR
-        str       r2, [r0]       // clear the ESMSR2 register
-
-        ldr   r0, ESMSSR2_REG    // load the ESMSSR2 status register address
-        ldr   r2, ESMSSR2_ERR_CLR
-        str       r2, [r0]       // clear the ESMSSR2 register
-
-        ldr   r0, ESMKEY_REG     // load the ESMKEY register address
-        mov       r2, #0x5
-        str       r2, [r0]       // clear the ESMKEY register
-
-        ldr   r0, VIM_INTREQ     // load the INTREQ register address
-        ldr   r2, VIM_INT_CLR
-        str       r2, [r0]       // clear the INTREQ register
-
-        ldr   r0, CCMR4_STAT_REG // load the CCMR4 status register address
-        ldr   r2, CCMR4_ERR_CLR
-        str       r2, [r0]       // clear the CCMR4 status register
-        bx    lr
-        .size _esmCcmErrorsClear_, . - _esmCcmErrorsClear_
-
-ESMSR1_REG:      .word  0xFFFFF518
-ESMSR2_REG:      .word  0xFFFFF51C
-ESMSR3_REG:      .word  0xFFFFF520
-ESMKEY_REG:      .word  0xFFFFF538
-ESMSSR2_REG:     .word  0xFFFFF53C
-CCMR4_STAT_REG:  .word  0xFFFFF600
-ERR_CLR_WRD:     .word  0xFFFFFFFF
-CCMR4_ERR_CLR:   .word  0x00010000
-ESMSR1_ERR_CLR:  .word  0x80000000
-ESMSR2_ERR_CLR:  .word  0x00000004
-ESMSSR2_ERR_CLR: .word  0x00000004
-VIM_INT_CLR:     .word  0x00000001
-VIM_INTREQ:      .word  0xFFFFFE20

@@ -51,7 +51,7 @@ ENTRY(start_ram);
 
 MEMORY
 {
-  SRAM (rwx) : ORIGIN = 0x08000000, LENGTH = 252K
+  SRAM (rwx) : ORIGIN = 0x08000000, LENGTH = 508K
     /* 4KB are reserved for the monitor */
 }
 

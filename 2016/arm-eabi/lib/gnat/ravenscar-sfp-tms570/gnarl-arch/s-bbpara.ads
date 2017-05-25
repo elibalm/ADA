@@ -47,7 +47,7 @@ package System.BB.Parameters is
    -- Hardware clock --
    --------------------
 
-   Clock_Frequency : constant Natural := 180_000_000;
+   Clock_Frequency : constant Natural := 300_000_000;
    --  Frequency of the CPU clock in Hz. We hard-code this hear to allow static
    --  computation of the required prescaler.
 
@@ -90,7 +90,7 @@ package System.BB.Parameters is
    --  These definitions are in this package in order to isolate target
    --  dependencies.
 
-   Number_Of_Interrupt_ID : constant := 95;
+   Number_Of_Interrupt_ID : constant := 126;
    --  Number of interrupts supported by the VIC. For the TMS570 interrupts,
    --  we really only consider the 95 usable interrupt channels. The run time
    --  assumes the interrupt source to interrupt channel map is direct (1:1),

@@ -59,7 +59,12 @@ project Runtime_Build is
        & ("-g", "-O1", "-fno-inline") & NO_REORDER_ADAFLAGS;
      for Switches ("s-excdeb.adb") use ALL_ADAFLAGS & ("-g", "-O0");
      for Switches ("s-assert.adb") use ALL_ADAFLAGS & ("-g");
-     for Switches ("a-tags.adb") use ALL_ADAFLAGS & ("-g");
-     for Switches ("raise-gcc.c") use ALL_CFLAGS & ("-fexceptions");
+     for Switches ("a-tags.adb")   use ALL_ADAFLAGS & ("-g");
+     for Switches ("raise-gcc.c")  use ALL_CFLAGS & ("-fexceptions");
+     for Switches ("a-reatim.adb") use ALL_ADAFLAGS & ("-g", "-O0");
+     for Switches ("s-taskin.adb") use ALL_ADAFLAGS & ("-g", "-O0");
+     for Switches ("s-taprop.adb") use ALL_ADAFLAGS & ("-g", "-O0");
+     for Switches ("s-bbthre.adb") use ALL_ADAFLAGS & ("-g", "-O0");
+     for Switches ("s-bbcppr.adb") use ALL_ADAFLAGS & ("-O2");
   end Compiler;
 end Runtime_Build;

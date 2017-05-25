@@ -6,13 +6,13 @@
 
    type Loaders is ("PROBE", "FLASH", "MONITOR", "HIRAM", "LORAM");
 
-   Loader : Loaders := external ("LOADER", "PROBE");
+   Loader : Loaders := external ("LOADER", "FLASH");
 
    package Compiler is
      Common_Required_Switches := ("-mbig-endian", "-mhard-float",
         "-mcpu=cortex-r4", "-mfpu=vfpv3-d16", "-marm");
 
-     Asm_Required_Switches := ();
+     Asm_Required_Switches := ("-c");
 
      for Leading_Required_Switches ("Ada") use
         Compiler'Leading_Required_Switches ("Ada") &amp;

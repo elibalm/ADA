@@ -29,29 +29,58 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
---  Minimal version of Text_IO body for use on LEON3, writes to the ARM Debug
---  Control Channel (DCC)
+--  Minimal version of Text_IO body for use on TMS570LC43xx, using SCI/LIN
 
-with System.Machine_Code; use System.Machine_Code;
+with Interfaces; use Interfaces;
+
 package body System.Text_IO is
 
-   type Word is mod 2**32;
+   SCI_BASE : constant := 16#FFF7_E400#;
+   --  SCI base address
 
-   function Read_DCSR return Word;
-   --  Read status register for debugger communication
+   TX_READY : constant := 16#100#;
+   RX_READY : constant := 16#200#;
+
+   SCIGCR0 : Unsigned_32 with Volatile,
+      Address => System'To_Address (SCI_BASE + 16#00#);
+
+   SCIGCR1 : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#04#);
+
+   SCICLEARINT : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#10#);
+
+   SCICLEARINTLVL : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#18#);
+
+   SCIFLR : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#1C#);
+
+   BRS : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#2C#);
+
+   SCIFORMAT : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#28#);
+
+   SCIRD : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#34#);
+
+   SCITD : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#38#);
+
+   SCIPIO0 : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#3C#);
+
+   SCIPIO8 : Unsigned_32 with Volatile,
+     Address => System'To_Address (SCI_BASE + 16#5C#);
 
    ---------
    -- Get --
    ---------
 
    function Get return Character is
-      C : Character;
    begin
-      Asm ("mrc p14, 0, %0, c0, c5",
-           Outputs => (Character'Asm_Output ("=r", C)),
-           Volatile => True);
-
-      return C;
+      return Character'Val (SCIRD and 16#FF#);
    end Get;
 
    ----------------
@@ -60,6 +89,39 @@ package body System.Text_IO is
 
    procedure Initialize is
    begin
+      --  Bring out of reset
+      SCIGCR0 := 0;
+      SCIGCR0 := 1;
+
+      --  Disable all interrupts
+      SCICLEARINT    := 16#FFFF_FFFF#;
+      SCICLEARINTLVL := 16#FFFF_FFFF#;
+
+      --  8n1, enable RX and TX, async, idle-line mode, SWnRST, internal clk
+      --  NOTE: SPNU499A (Nov 2012) is incorrect on COMM MODE: Idle line mode
+      --  value is 0.
+      SCIGCR1 := 16#03_00_00_22#;
+
+      --  Baud rate. PLLCLK=300Mhz, VCLK = PLLCLK / 1
+      declare
+         Baud : constant := 115200;
+         VCLK : constant := 75_000_000;
+         P    : constant := VCLK / (16 * Baud) - 1;
+         M    : constant := (VCLK / Baud) rem 16;
+      begin
+         BRS  := P + M * 2**24;
+      end;
+
+      --  8 bits
+      SCIFORMAT := 7;
+
+      --  Enable Tx and Rx pins, pull-up
+      SCIPIO0   := 2#110#;
+      SCIPIO8   := 2#110#;
+
+      --  Enable SCI
+      SCIGCR1   := SCIGCR1 or 16#80#;
+
       Initialized := True;
    end Initialize;
 
@@ -68,14 +130,14 @@ package body System.Text_IO is
    -----------------
 
    function Is_Tx_Ready return Boolean is
-      ((Read_DCSR and 2**29) = 0);
+      ((SCIFLR and TX_READY) /= 0);
 
    -----------------
    -- Is_Rx_Ready --
    -----------------
 
    function Is_Rx_Ready return Boolean is
-      ((Read_DCSR and 2**30) /= 0);
+      ((SCIFLR and RX_READY) /= 0);
 
    ---------
    -- Put --
@@ -83,23 +145,8 @@ package body System.Text_IO is
 
    procedure Put (C : Character) is
    begin
-      Asm ("mcr p14, 0, %0, c0, c5",
-           Inputs => (Word'Asm_Input ("r", Word (Character'Pos (C)))),
-           Volatile => True);
+      SCITD := Character'Pos (C);
    end Put;
-
-   ---------------
-   -- Read_DCSR --
-   ---------------
-
-   function Read_DCSR return Word is
-      R : Word;
-   begin
-      Asm ("mrc p14, 0, %0, c0, c1",
-            Outputs => (Word'Asm_Output ("=r", R)),
-            Volatile => True);
-      return R;
-   end Read_DCSR;
 
    ----------------------------
    -- Use_Cr_Lf_For_New_Line --

@@ -27,7 +27,7 @@
  *                                                                          *
  ****************************************************************************/
 
-/* This file is specific to the Hercules ARM Cortex-R4F Microcontrollers,
+/* This file is specific to the Hercules ARM Cortex-R5F Microcontrollers,
    such as the TMS570. */
 
 /* This file contains the trap table and start up code for the multitasking
@@ -61,6 +61,7 @@ __gnat_dabt_trap:	/* 10 */
 	ldr	pc,[pc,#-0x1b0] /* IRQ, jump to IRQVECREG, 16#ffff_fe70# */
 	ldr	pc,[pc,#-0x1b0] /* FIQ, jump to FIQVECREG, 16#ffff_fe74# */
 
+@-------------------------------------------------------------------------------
 	.text
 svcSp:		.word __svc_stack_end
 abortSp:	.word __abort_stack_end
@@ -69,19 +70,22 @@ fiqSp:		.word __fiq_stack_end
 irqSp:		.word __irq_stack_end
 userSp:		.word __stack_end
 
+@-------------------------------------------------------------------------------
 	.type start_ram,%function
+
 start_ram:
-	/* See Application Report SPNA106B - January 2013
+	/* See Application Report SPNA106D - May 2013
 	   Initialization of Hercules(TM) ARM(R) Cortex(TM)-R4F
-	   Microcontrollers.
-	   Refer in particular to the corresponding C file
-	   sys_startup_recommended.c */
+	   Microcontrollers. */
 
 	/* 2.1 Enable Floating-Point Coprocessor  */
 	bl	L_coreEnableVfp
 
 	/* 2.2 Initialize Cortex-R4F registers	*/
 	bl	L_coreInitRegisters
+
+        /* Initialize System - Clock, Flash settings with Efuse self check */
+        bl      _ada_system_init
 
 	/* Clear .bss */
 	movw	r0,#:lower16:__bss_start
@@ -100,6 +104,7 @@ start_ram:
 	.size	start_ram, . - start_ram
 
         /* Fall through in order to halt if main would return ... */
+@-------------------------------------------------------------------------------
 
 	.global	__exit
 __exit:
@@ -111,6 +116,8 @@ __exit:
 
 	.size	__exit, . - __exit
 
+@-------------------------------------------------------------------------------
+
 L_coreEnableVfp:
 	mrc   p15,     #0x00,	   r0,	     c1, c0, #0x02
 	orr   r0,      r0,	   #0xF00000
@@ -119,15 +126,15 @@ L_coreEnableVfp:
 	fmxr  fpexc,   r0
 	bx    lr
 
+@-------------------------------------------------------------------------------
+
 L_coreInitRegisters:
 	/* Start initializing CPU registers, including backed registers for
 	   all modes. This is necessary on Cortex R4F to avoid miscompares
 	   between the cores running in lockstep, and is a good idea on any
 	   system. */
 
-        /* Save lr because changing mode will change lr value */
-        mov	r0, lr
-
+	mov	r0, lr
 	/* Supervisor mode */
 	cps	#19 /* 10011 */
 	ldr	sp, svcSp
@@ -152,6 +159,9 @@ L_coreInitRegisters:
 	cps	#31  /* 11111 */
 	ldr	sp, userSp	/* SYS mode shared stack with User mode */
 
-        /* Return on saved lr */
-	bx	r0
+	mov	lr, r0
+	bx	lr
 	.size	L_coreInitRegisters, . - L_coreInitRegisters
+
+@-------------------------------------------------------------------------------
+
