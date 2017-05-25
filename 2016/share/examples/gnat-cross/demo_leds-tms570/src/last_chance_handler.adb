@@ -25,57 +25,22 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Conversion;
+with TMS570.LEDs;   use TMS570.LEDs;
 
-package body TMS570.LEDs is
+package body Last_Chance_Handler is
 
-   function As_Word is new Ada.Unchecked_Conversion
-     (Source => User_LED, Target => Word);
+   -------------------------
+   -- Last_Chance_Handler --
+   -------------------------
 
-   --------
-   -- On --
-   --------
-
-   procedure On (This : User_LED) is
+   procedure Last_Chance_Handler (Msg : System.Address; Line : Integer) is
+      pragma Unreferenced (Msg, Line);
    begin
-      Set_Pin (GPIOB_Port, As_Word (This));
-   end On;
+      On (Right);
+      --  No return procedure.
+      pragma Warnings (Off, "*rewritten as loop");
+      <<spin>> goto spin;   -- yes, a goto!
+      pragma Warnings (On, "*rewritten as loop");
+   end Last_Chance_Handler;
 
-   ---------
-   -- Off --
-   ---------
-
-   procedure Off (This : User_LED) is
-   begin
-      Clear_Pin (GPIOB_Port, As_Word (This));
-   end Off;
-
-   ----------------
-   -- Initialize --
-   ----------------
-
-   procedure Initialize is
-   begin
-      -- Set GPIO Module out of reset
-      GPIO_Base.GCR0    := 16#0000_0001#;
-      GPIO_Base.ENACLR  := 16#FFFF_FFFF#;
-      GPIO_Base.LVLCLR  := 16#FFFF_FFFF#;
-
-      -- Set pins 7:4 as outputs
-      GPIOB_Port.DOUT   := 16#0000_00F0#;
-      GPIOB_Port.DIR    := 16#0000_00F0#;
-      GPIOB_Port.PDR    := 16#0000_0000#;
-      GPIOB_Port.PSL    := 16#0000_0000#;
-      GPIOB_Port.PULDIS := 16#0000_0000#;
-
-      -- Initialize interrupts
-      GPIO_Base.POL     := 16#0000_0000#;
-      GPIO_Base.LVLSET  := 16#0000_0000#;
-      GPIO_Base.FLG     := 16#0000_00FF#;
-      GPIO_Base.ENASET  := 16#0000_0000#;
-
-   end Initialize;
-
-begin
-   Initialize;
-end TMS570.LEDs;
+end Last_Chance_Handler;

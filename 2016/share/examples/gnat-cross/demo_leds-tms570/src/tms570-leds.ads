@@ -34,18 +34,12 @@ with System;
 package TMS570.LEDs is
    pragma Elaborate_Body;
 
-   type User_LED is (Right_Top, Right, Left_Top, Bottom,
-                     Right_Bottom, Left, Left_Bottom, Top);
+   type User_LED is (Right, Left);
 
    for User_LED use
-     (Right_Top    => GPIO_Pin_0,
-      Right        => GPIO_Pin_5,
-      Left_Top     => GPIO_Pin_17,
-      Bottom       => GPIO_Pin_18,
-      Right_Bottom => GPIO_Pin_25,
-      Left         => GPIO_Pin_27,
-      Left_Bottom  => GPIO_Pin_29,
-      Top          => GPIO_Pin_31);
+     (
+      Right        => GPIO_Pin_6,
+      Left         => GPIO_Pin_7);
 
    --  As a result of the representation clause, avoid iterating directly over
    --  the type since that will require an implicit lookup in the generated
@@ -59,11 +53,18 @@ package TMS570.LEDs is
    procedure On  (This : User_LED) with Inline;
    procedure Off (This : User_LED) with Inline;
 
+   -----------------------------------------------------------------------------
+   --
+   -----------------------------------------------------------------------------
 private
-
-   HET_Port : GPIO_Register with
+   GPIO_Base : GPIO_Base_Register with
      Volatile,
-     Address => System'To_Address (16#FFF7_B84C#);  -- HET Port 1
-   pragma Import (Ada, HET_Port);
+     Address => System'To_Address (16#FFF7_BC00#);  -- GPIO BASE
+   pragma Import (Ada, GPIO_Base);
+
+   GPIOB_Port : GPIO_Register with
+     Volatile,
+     Address => System'To_Address (16#FFF7_BC54#);  -- GPIOB Port
+   pragma Import (Ada, GPIOB_Port);
 
 end TMS570.LEDs;

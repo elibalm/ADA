@@ -24,34 +24,35 @@
 -- Extensive contributions were provided by Ada Core Technologies Inc.      --
 --                                                                          --
 ------------------------------------------------------------------------------
-
+with Ada.Text_IO;   use Ada.Text_IO;
 with TMS570.LEDs;   use TMS570.LEDs;
 with Ada.Real_Time; use Ada.Real_Time;
 
 package body Driver is
 
-   type Index is mod 8;
+   type Index is mod 2;
 
    Pattern : constant array (Index) of User_LED :=
-      (Right_Top, Top, Left_Top,
-       Left,
-       Left_Bottom, Bottom, Right_Bottom,
-       Right);
+      (Left, Right);
    --  The LEDs are not physically laid out "consecutively" in such a way that
    --  we can simply drive them in enumeral order to get circular rotation.
    --  Thus we define this mapping, using a consecutive index to get the
    --  physical LED blinking order desired.
 
    task body Controller is
-      Period       : constant Time_Span := Milliseconds (50);  -- arbitrary
-      Next_Release : Time := Clock;
-      Next_LED     : Index := 0;
+      Period       : constant Time_Span := Milliseconds (1000);
+      Next_Release : Time    := Clock;
+      Next_LED     : Index   := 0;
+      Counter      : Integer := 0;
    begin
       loop
          Off (Pattern (Next_LED));
          Next_LED := Next_LED + 1;
          On (Pattern (Next_LED));
 
+         Put_Line ("TMS570LC43xx Launchpad : OK " & Integer'Image (Counter)) ;
+
+         Counter      := Counter + 1;
          Next_Release := Next_Release + Period;
          delay until Next_Release;
       end loop;

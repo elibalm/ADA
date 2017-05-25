@@ -2,7 +2,7 @@
 --                                                                          --
 --                             GNAT EXAMPLE                                 --
 --                                                                          --
---             Copyright (C) 2014, Free Software Foundation, Inc.           --
+--          Copyright (C) 2014-2015, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -25,57 +25,20 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Conversion;
+--  The "last chance handler" (LCH) is the routine automatically called when
+--  any exception is propagated. It is not intended to be called directly. The
+--  system-defined LCH simply stops the entire application, ungracefully.
+--  Users may redefine it, however, as we have done here. This one turns off
+--  all but the red LED, which it turns on, and then goes into an infinite
+--  loop.
 
-package body TMS570.LEDs is
+with System;
 
-   function As_Word is new Ada.Unchecked_Conversion
-     (Source => User_LED, Target => Word);
+package Last_Chance_Handler is
 
-   --------
-   -- On --
-   --------
+   procedure Last_Chance_Handler (Msg : System.Address; Line : Integer);
+   pragma Export (C, Last_Chance_Handler, "__gnat_last_chance_handler");
+   pragma No_Return (Last_Chance_Handler);
+   pragma Weak_External (Last_Chance_Handler);
 
-   procedure On (This : User_LED) is
-   begin
-      Set_Pin (GPIOB_Port, As_Word (This));
-   end On;
-
-   ---------
-   -- Off --
-   ---------
-
-   procedure Off (This : User_LED) is
-   begin
-      Clear_Pin (GPIOB_Port, As_Word (This));
-   end Off;
-
-   ----------------
-   -- Initialize --
-   ----------------
-
-   procedure Initialize is
-   begin
-      -- Set GPIO Module out of reset
-      GPIO_Base.GCR0    := 16#0000_0001#;
-      GPIO_Base.ENACLR  := 16#FFFF_FFFF#;
-      GPIO_Base.LVLCLR  := 16#FFFF_FFFF#;
-
-      -- Set pins 7:4 as outputs
-      GPIOB_Port.DOUT   := 16#0000_00F0#;
-      GPIOB_Port.DIR    := 16#0000_00F0#;
-      GPIOB_Port.PDR    := 16#0000_0000#;
-      GPIOB_Port.PSL    := 16#0000_0000#;
-      GPIOB_Port.PULDIS := 16#0000_0000#;
-
-      -- Initialize interrupts
-      GPIO_Base.POL     := 16#0000_0000#;
-      GPIO_Base.LVLSET  := 16#0000_0000#;
-      GPIO_Base.FLG     := 16#0000_00FF#;
-      GPIO_Base.ENASET  := 16#0000_0000#;
-
-   end Initialize;
-
-begin
-   Initialize;
-end TMS570.LEDs;
+end Last_Chance_Handler;
